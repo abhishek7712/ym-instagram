@@ -1,0 +1,8 @@
+Middleman template
+
+Middleman: http://middlemanapp.com/
+Middleman Bootstrap: https://github.com/nathos/middleman-bootstrap
+
+
+Notes:
+* Requires bundler (gem install bundler)

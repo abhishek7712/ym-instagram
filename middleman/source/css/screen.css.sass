@@ -1,0 +1,110 @@
+//
+// Main Stylesheet
+//
+
+@import "compass/css3"
+@import "compass/utilities/sprites/base"
+@import "compass/layout/sticky-footer"
+@import "base"
+@import "instagram_styles"
+@import "masonry"
+
+// HTML5 Boilerplate Colors - uncomment to override defaults
+
+// HTML5 Boilerplate Styles
+@import "h5bp/main"
+
+// Media queries for our supported screen widths.
+// Comment out any widths (breakpoints) you don't intend to support.
+//
+// Use these imports for everything except grid definitions.
+// Put those in the /grid/media/*.sass partials
+
+
+// 200px ---------------------------------------------------------------------
+@media only screen and (min-width: 320px)
+	.bigImageView
+		.bigImageContainer
+			width: 320px
+			height: 320px
+			img
+				width: 320px
+				height: 320px
+		.ui-arrow
+			top: 140px
+			display: none
+		#arrowRight
+			right: 48px
+		#arrowLeft
+			left: 48px
+
+	#map_canvas
+		width: 320px
+		height: 160px
+
+// 480px ---------------------------------------------------------------------
+@media only screen and (min-width: 480px)
+	.bigImageView
+		.bigImageContainer
+			width: 400px
+			height: 400px
+			img
+				width: 400px
+				height: 400px
+		.ui-arrow
+			top: 170px
+			display: block
+		#arrowRight
+			right: -23px
+		#arrowLeft
+			left: -23px
+
+	#map_canvas
+		width: 400px
+		height: 200px
+
+@media only screen and (min-width: 580px) and (max-width: 780px)
+	.bigImageView
+		.bigImageContainer
+			width: 500px
+			height: 500px
+			img
+				width: 500px
+				height: 500px
+		.ui-arrow
+			top: 220px
+			display: block
+		#arrowRight
+			right: -53px
+		#arrowLeft
+			left: -53px
+
+	#map_canvas
+		width: 500px
+		height: 250px
+
+// 780px ---------------------------------------------------------------------
+@media only screen and (min-width: 780px)
+	.bigImageView
+		.bigImageContainer
+			width: 612px
+			height: 612px
+			img
+				width: 612px
+				height: 612px
+		.ui-arrow
+			top: 270px
+			display: block
+		#arrowRight
+			right: -63px
+		#arrowLeft
+			left: -63px
+
+	#map_canvas
+		width: 612px
+		height: 306px
+
+
+// HTML5 Boilerplate print styles
+// (apparently deprecated, but I still think there's good stuff in here)
+//@import "h5bp/print"

@@ -1,0 +1,28 @@
+@import "../images/ui/*.png"
+@include all-ui-sprites()
+
+$dividergray: #e9e9e9
+
+
+@mixin bigimageText($size)
+	font-family: ProximaNovaRegular
+	font-size: $size
+	color: white
+
+@mixin arial($font-size)
+	font-family: arial, helvetica, sans
+	font-size: $font-size
+
+
++font-face("ProximaNovaBold", font-files("../fonts/proxima/proximanovabold-webfont.woff", woff, "../fonts/proxima/proximanovabold-webfont.ttf", ttf, "../fonts/proxima/proximanovabold-webfont.otf", otf, "../fonts/proxima/proximanovabold-webfont.svg", svg), "../fonts/proxima/proximanovabold-webfont.eot")
+
++font-face("ProximaNovaRegular", font-files("../fonts/proxima/proximanovareg-webfont.woff", woff, "../fonts/proxima/proximanovareg-webfont.ttf", ttf, "../fonts/proxima/proximanovareg-webfont.otf", otf, "../fonts/proxima/proximanovareg-webfont.svg", svg), "../fonts/proxima/proximanovareg-webfont.eot")
+
++font-face("BigCaslon", font-files("../fonts/bigcaslon/bigcaslon-webfont.woff", woff, "../fonts/bigcaslon/bigcaslon-webfont.ttf", ttf, "../fonts/bigcaslon/bigcaslon-webfont.otf", otf, "../fonts/bigcaslon/bigcaslon-webfont.svg", svg), "../fonts/bigcaslon/bigcaslon-webfont.eot")
+
+@mixin transition($duration: 0.25s)
+	+transition-property(all)
+	+transition-duration($duration)
+
+
+

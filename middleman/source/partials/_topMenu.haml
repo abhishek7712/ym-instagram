@@ -1,0 +1,13 @@
+.topMenuContainer
+	.centerContainer
+		%a{:href=>"/"}
+			=image_tag 'ym_logo.png'
+		.middleContainer
+			%p #ym
+		.viewOptions
+			%a{:href=>"javascript:;",:class=>"ui-back_arrowContainer"}
+				.ui-back_arrow
+			%a{:href=>"javascript:;",:class=>"ui-view_smallContainer","data-view"=>"smallView"}
+				.ui-view_small
+			%a{:href=>"javascript:;",:class=>"ui-view_largeContainer","data-view"=>"largeView"}
+				.ui-view_large
