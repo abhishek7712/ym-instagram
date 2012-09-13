@@ -3,6 +3,7 @@ require "instagram"
 require 'net/ssh'
 require 'net/sftp'
 require 'data_mapper'
+require 'cgi'
 
 # Enable sinatra sessions (so we stay logged in)
 enable :sessions
@@ -37,11 +38,10 @@ class InstagramImage
   property :id,				Serial
   property :caption,		String, :length => 255
   property :created_time,	DateTime
-  property :user,			Serial
   property :location,		Text
   property :images,			Text
-  property :instagram_id, 	String
-
+  property :instagram_id, 	String, :length => 255
+  belongs_to :user
 end
 
 class User
@@ -52,7 +52,8 @@ class User
 	property :website,			String, :length => 255
 	property :username,			String, :length => 255
 	property :bio,				Text
-	property :instagram_id,		String, :length => 255
+	property :instagram_id,		Integer
+	has n, :instagram_images
 end
 
 DataMapper.finalize
@@ -84,7 +85,6 @@ module Instagram
 			 			break
 					end
 		  		end
-				puts response.data.length
 				response
 	  		end
 		end
@@ -171,8 +171,41 @@ end
 get "/feed" do
 	client = Instagram.client(:access_token => session[:access_token])
 
+	
+	follows_ids = client.user_follows.collect{|f| f.id.to_i}
+	follows = client.user_follows
+	followed_by = client.user_followed_by
+
+	for user in followed_by
+		if !follows_ids.include? user.id.to_i
+			follows.push(user)
+		end
+	end
+	follows_ids = client.user_follows.collect{|f| f.id.to_i}
+
+	user_ids = User.all.collect{|user| user.instagram_id.to_i}
+
+	for user in follows
+		if !user_ids.include? user.id.to_i
+			User.create(:username => user.username,
+						:full_name => user.full_name,
+						:profile_picture =>	user.profile_picture,
+						:website =>	user.website,
+						:username => user.username,		
+						:bio =>	user.bio.gsub(/[^A-Za-z0-9 .,;:!?@#%$&*)('"]+/i, ' '),
+						:instagram_id => user.id)
+		end
+	end
+
+	last_image = InstagramImage.first
+	if last_image
+		puts "we have image!" + last_image.id.to_s
+		feed = client.multipage_user_media_feed({:count => 1000,  :min_id => last_image.instagram_id}).data
+	else
+		feed = client.multipage_user_media_feed({:count => 1000}).data
+	end
 	# Use our hack method to get up to 5 "pages" of the photo feed. Then select only photos tagged with "ym".
-	feed = client.multipage_user_media_feed({:count => 1000}).data
+	
 	#feed = Instagram.user_media_feed.data
 	# Write feed as json
 	#open(File.expand_path(File.dirname(__FILE__) + "/../middleman/build/feed.json"), 'w') { |f| f << feed.map{|h| strip h }.to_json }
@@ -186,16 +219,16 @@ get "/feed" do
 		if valid_item?(media_item)
 			html << "<img src='#{media_item.images.thumbnail.url}'>"
 			begin
-				img = InstagramImage.create(:caption => media_item.caption.nil? ? '' : media_item.caption.text,
-											:created_time => DateTime.strptime(media_item.created_time,'%s'),
-											:user => media_item.user.to_json,
-											:instagram_id => media_item.id,
-											:location => media_item.location.nil? ? '' : media_item.location.to_json,
-											:images => media_item.images.to_json)			
+				InstagramImage.create(	:caption => media_item.caption.nil? ? '' : media_item.caption.text,
+										:created_time => DateTime.strptime(media_item.created_time,'%s'),
+										:user_id => User.first(:instagram_id => media_item.user.id.to_i).id,
+										:instagram_id => media_item.id,
+										:location => media_item.location.nil? ? '' : media_item.location.to_json,
+										:images => media_item.images.to_json)			
 			rescue Exception => e
 				puts e.inspect
-				puts "\n\n"
-				puts media_item
+				puts "\n"
+				puts media_item.user.id
 			end
 		end
 	end
