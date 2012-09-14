@@ -41,6 +41,7 @@ class InstagramImage
   property :location,		Text
   property :images,			Text
   property :instagram_id, 	String, :length => 255
+  property :comments,		Text
   belongs_to :user
 end
 
@@ -123,7 +124,12 @@ def valid_tags? tags
 end
 
 def valid_text? text
-	["#ym", "#yourmajestyco"].include? text
+	["#ym", "#yourmajestyco","yourmajestyco","YM", "#YM", "your majesty", "your-majesty"].each do |token|
+		if text.include? token
+			return true
+		end
+	end
+	return false
 end
 
 
@@ -171,7 +177,6 @@ end
 get "/feed" do
 	client = Instagram.client(:access_token => session[:access_token])
 
-	
 	follows_ids = client.user_follows.collect{|f| f.id.to_i}
 	follows = client.user_follows
 	followed_by = client.user_followed_by
@@ -204,6 +209,17 @@ get "/feed" do
 	else
 		feed = client.multipage_user_media_feed({:count => 1000}).data
 	end
+
+	users = User.all
+	users.each do |user|
+		begin
+			response = client.user_recent_media(user.instagram_id)
+			feed = feed + response
+		rescue Exception => e
+			
+		end
+	end
+
 	# Use our hack method to get up to 5 "pages" of the photo feed. Then select only photos tagged with "ym".
 	
 	#feed = Instagram.user_media_feed.data
@@ -219,12 +235,15 @@ get "/feed" do
 		if valid_item?(media_item)
 			html << "<img src='#{media_item.images.thumbnail.url}'>"
 			begin
-				InstagramImage.create(	:caption => media_item.caption.nil? ? '' : media_item.caption.text,
-										:created_time => DateTime.strptime(media_item.created_time,'%s'),
-										:user_id => User.first(:instagram_id => media_item.user.id.to_i).id,
-										:instagram_id => media_item.id,
-										:location => media_item.location.nil? ? '' : media_item.location.to_json,
-										:images => media_item.images.to_json)			
+				if InstagramImage.all(:instagram_id => media_item.id).length == 0
+					InstagramImage.create(	:caption => media_item.caption.nil? ? '' : media_item.caption.text,
+											:created_time => DateTime.strptime(media_item.created_time,'%s'),
+											:user_id => User.first(:instagram_id => media_item.user.id.to_i).id,
+											:instagram_id => media_item.id,
+											:location => media_item.location.nil? ? '' : media_item.location.to_json,
+											:comments => media_item.comments.data.to_json.gsub(/[^A-Za-z0-9 .,;:!?@#%$&*}{)('"]+/i, ' '),
+											:images => media_item.images.to_json)	
+				end		
 			rescue Exception => e
 				puts e.inspect
 				puts "\n"
