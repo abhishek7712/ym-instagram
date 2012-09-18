@@ -1,4 +1,5 @@
 require "sinatra"
+require 'sinatra/paginate'
 require "instagram"
 require 'net/ssh'
 require 'net/sftp'
@@ -92,6 +93,18 @@ module Instagram
 		include InstanceMethodsHack
 	end
 end
+
+
+
+
+helpers do
+    def page
+      [params[:page].to_i - 1, 0].max
+    end
+end
+
+
+
 
 # Strip unused fields from media_item hash
 def strip h
@@ -233,9 +246,9 @@ get "/feed" do
 
 	for media_item in feed
 		if valid_item?(media_item)
-			html << "<img src='#{media_item.images.thumbnail.url}'>"
 			begin
 				if InstagramImage.all(:instagram_id => media_item.id).length == 0
+					html << "<img src='#{media_item.images.thumbnail.url}'>"
 					InstagramImage.create(	:caption => media_item.caption.nil? ? '' : media_item.caption.text,
 											:created_time => DateTime.strptime(media_item.created_time,'%s'),
 											:user_id => User.first(:instagram_id => media_item.user.id.to_i).id,
@@ -282,4 +295,12 @@ get "/feed" do
 	</script>
   EOS
   
+end
+
+get "/images" do
+ @images  = InstagramImage.all(limit: 10, offset: pages * 10).to_json
+end
+
+get "/users" do
+ @users  = User.all.to_json
 end
