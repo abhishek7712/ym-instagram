@@ -28,8 +28,8 @@ DataMapper.setup(:default, {
 	:adapter  => 'mysql',
 	:host     => 'localhost',
 	:username => 'root' ,
-	:password => '',
-	:database => 'yminst_development'})  
+	:password => 'root',
+	:database => 'yminstagram'})
 
 DataMapper::Logger.new(STDOUT, :debug)
 #DataMapper::Model.raise_on_save_failure = true
@@ -96,16 +96,6 @@ end
 
 
 
-
-helpers do
-    def page
-      [params[:page].to_i - 1, 0].max
-    end
-end
-
-
-
-
 # Strip unused fields from media_item hash
 def strip h
 	h.reject {|a| [
@@ -126,7 +116,7 @@ end
 def upload local_file
 	Net::SSH.start('172.16.0.11', 'knight', :password => 'broadway') do |ssh|
 		ssh.sftp.connect do |sftp|
-			sftp.upload!(local_file, "/data/www/apache2/htdocs/instagram/feed.json")  
+			sftp.upload!(local_file, "/data/www/apache2/htdocs/instagram/feed.json")
 		end
 	end
 end
@@ -209,7 +199,7 @@ get "/feed" do
 						:full_name => user.full_name,
 						:profile_picture =>	user.profile_picture,
 						:website =>	user.website,
-						:username => user.username,		
+						:username => user.username,
 						:bio =>	user.bio.gsub(/[^A-Za-z0-9 .,;:!?@#%$&*)('"]+/i, ' '),
 						:instagram_id => user.id)
 		end
@@ -229,12 +219,12 @@ get "/feed" do
 			response = client.user_recent_media(user.instagram_id)
 			feed = feed + response
 		rescue Exception => e
-			
+
 		end
 	end
 
 	# Use our hack method to get up to 5 "pages" of the photo feed. Then select only photos tagged with "ym".
-	
+
 	#feed = Instagram.user_media_feed.data
 	# Write feed as json
 	#open(File.expand_path(File.dirname(__FILE__) + "/../middleman/build/feed.json"), 'w') { |f| f << feed.map{|h| strip h }.to_json }
@@ -255,8 +245,8 @@ get "/feed" do
 											:instagram_id => media_item.id,
 											:location => media_item.location.nil? ? '' : media_item.location.to_json,
 											:comments => media_item.comments.data.to_json.gsub(/[^A-Za-z0-9 .,;:!?@#%$&*}{)('"]+/i, ' '),
-											:images => media_item.images.to_json)	
-				end		
+											:images => media_item.images.to_json)
+				end
 			rescue Exception => e
 				puts e.inspect
 				puts "\n"
@@ -264,11 +254,11 @@ get "/feed" do
 			end
 		end
 	end
-  
+
   # Refresh every 5 minutes
-  html << <<-EOS 
+  html << <<-EOS
 	<script type='text/javascript'>
-	
+
 	function loadXMLDoc()
 	{
 		var xmlhttp;
@@ -289,16 +279,22 @@ get "/feed" do
 		}
 		xmlhttp.open("GET","/feed",true);
 		xmlhttp.send();
-	}  
+	}
 	setInterval("loadXMLDoc()", 300000);
 	//setTimeout('location.reload(true);', 300000);
 	</script>
   EOS
-  
+
 end
 
-get "/images" do
- @images  = InstagramImage.all(limit: 10, offset: pages * 10).to_json
+helpers do
+	def page
+		[params[:page].to_i - 1, 0].max
+	end
+end
+
+get "/api" do
+ @images  = InstagramImage.all(limit: 50, offset: page * 50).to_json
 end
 
 get "/users" do
