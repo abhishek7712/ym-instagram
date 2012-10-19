@@ -13,6 +13,7 @@ marker = {}
 singleViewActive = false
 nextPageJSON = ""
 currentPhotoIndex = 0
+currentPage = 1
 
 String::toProperCase = ->
 	@replace /\w\S*/g, (txt) ->
@@ -67,8 +68,12 @@ switchView = ->
 
 
 loadPhotos = (jsonURL)->
+
+	if jsonURL == 'done'
+		return
+
 	if jsonURL is 'first'
-		jsonURL = 'feed.json'
+		jsonURL = '/images?page='+currentPage
 
 	$.ajax
 		type: 'GET'
@@ -80,10 +85,12 @@ loadPhotos = (jsonURL)->
 			$(data).each (i, p) ->
 				createNewPhoto(i, p)
 
-			if jsonURL == 'feed.json'
-				nextPageJSON = 'feed2.json'
-			else
-				nextPageJSON = ''
+				if data.length == 50
+					currentPage++
+					jsonURL = '/images?page='+currentPage
+				else
+					jsonURL = 'done'
+
 		error: ->
 			alert "An error occured while connecting to the instagram API"
 
