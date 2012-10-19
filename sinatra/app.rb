@@ -28,7 +28,7 @@ DataMapper.setup(:default, {
 	:adapter  => 'mysql',
 	:host     => 'localhost',
 	:username => 'root' ,
-	:password => 'root',
+	:password => '',
 	:database => 'yminstagram'})
 
 DataMapper::Logger.new(STDOUT, :debug)
@@ -43,6 +43,7 @@ class InstagramImage
   property :images,			Text
   property :instagram_id, 	String, :length => 255
   property :comments,		Text
+  property :full_name,		String, :length => 255
   belongs_to :user
 end
 
@@ -242,6 +243,7 @@ get "/feed" do
 					InstagramImage.create(	:caption => media_item.caption.nil? ? '' : media_item.caption.text,
 											:created_time => DateTime.strptime(media_item.created_time,'%s'),
 											:user_id => User.first(:instagram_id => media_item.user.id.to_i).id,
+											:full_name => User.first(:instagram_id => media_item.user.id.to_i).full_name,
 											:instagram_id => media_item.id,
 											:location => media_item.location.nil? ? '' : media_item.location.to_json,
 											:comments => media_item.comments.data.to_json.gsub(/[^A-Za-z0-9 .,;:!?@#%$&*}{)('"]+/i, ' '),
@@ -294,7 +296,15 @@ helpers do
 end
 
 get "/api" do
- @images  = InstagramImage.all(limit: 50, offset: page * 50).to_json
+	@images  = InstagramImage.all(limit: 50, offset: page * 50)
+	for image in @images
+		fname = User.first(:id => image.user_id.to_i).full_name
+		if image.full_name != fname
+			image.full_name = fname
+			image.save!
+		end
+	 end
+	return @images.to_json
 end
 
 get "/users" do
