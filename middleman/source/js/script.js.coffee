@@ -73,7 +73,7 @@ loadPhotos = (jsonURL)->
 		return
 
 	if jsonURL is 'first'
-		jsonURL = '/images?page='+currentPage
+		jsonURL = '/api?page='+currentPage
 
 	$.ajax
 		type: 'GET'
@@ -87,7 +87,7 @@ loadPhotos = (jsonURL)->
 
 				if data.length == 50
 					currentPage++
-					jsonURL = '/images?page='+currentPage
+					jsonURL = '/api?page='+currentPage
 				else
 					jsonURL = 'done'
 
