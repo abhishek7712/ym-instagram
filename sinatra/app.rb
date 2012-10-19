@@ -28,8 +28,8 @@ DataMapper.setup(:default, {
 	:adapter  => 'mysql',
 	:host     => 'localhost',
 	:username => 'root' ,
-	:password => '',
-	:database => 'yminst_development'})
+	:password => 'root',
+	:database => 'yminstagram'})
 
 DataMapper::Logger.new(STDOUT, :debug)
 #DataMapper::Model.raise_on_save_failure = true
@@ -293,7 +293,7 @@ helpers do
 	end
 end
 
-get "/images" do
+get "/api" do
  @images  = InstagramImage.all(limit: 50, offset: page * 50).to_json
 end
 
