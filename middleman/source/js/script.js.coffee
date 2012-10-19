@@ -73,7 +73,7 @@ loadPhotos = (jsonURL)->
 		return
 
 	if jsonURL is 'first'
-		jsonURL = '/images?page='+currentPage
+		jsonURL = '/api?page='+currentPage
 
 	$.ajax
 		type: 'GET'
@@ -87,7 +87,7 @@ loadPhotos = (jsonURL)->
 
 				if data.length == 50
 					currentPage++
-					jsonURL = '/images?page='+currentPage
+					jsonURL = '/api?page='+currentPage
 				else
 					jsonURL = 'done'
 
@@ -103,9 +103,9 @@ createNewPhoto = (i, photo) ->
 		newPhoto.append '<img src="'+photo.images.thumbnail.url+'" />'
 
 	newPhoto.data
-		'user': photo.caption.from.full_name
-		'printdate': setPrintDate(photo.caption.created_time)
-		'captionText': photo.caption.text
+		'user': photo.full_name
+		'printdate': setPrintDate(photo.created_time)
+		'captionText': photo.caption
 		'photos': photo.images
 
 	if photo.location
