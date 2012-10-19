@@ -7,77 +7,210 @@ redirect_uri = "http://172.16.1.139:4567/"
 monthArray = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 
 address = ""
+nextFilename = ""
 dataContainer = []
 marker = {}
-nextFilename = ""
 singleViewActive = false
+nextPageJSON = ""
+currentPhotoIndex = 0
+currentPage = 1
 
 String::toProperCase = ->
 	@replace /\w\S*/g, (txt) ->
 		txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
 
 $(window).load ->
-
-	$(".viewOptions").on "click", "a", (e) ->
-		e.preventDefault()
-		whatView($(this).data('view'))
 	$('#smallView').masonry
 		itemSelector: ".feedParent"
 		columnWidth: 150
 		gutterWidth: 1
 		isAnimated: true
 		isFitWidth: true
-	getFeed()
 
-getFeed = ->
+	unless "ontouchstart" of document.documentElement
+		$('body').addClass 'backgroundActive'
+
+	setEventListeners()
+	loadPhotos('first')
+
+setEventListeners = ->
+	$('.viewOptions a').on 'click', switchView
+	$(window).on 'scroll', infiniteScroll
+	$('.ui-arrow#arrowRight').on 'click', nextSinglePhoto
+	$('.ui-arrow#arrowLeft').on 'click', prevSinglePhoto
+	$('.ui-back_arrowContainer, .clickbg').on 'click', closeBigImageView
+	$('body').on 'keyup', singlePhotoKeyEvent
+
+switchView = ->
+	switch $(this).data('view')
+		when 'largeView'
+			imgSize = 303
+			$('#smallView').addClass 'large'
+		when 'smallView'
+			imgSize = 150
+			$('#smallView').removeClass 'large'
+
+	$('.feedParent img').animate
+		width: imgSize
+		height: imgSize
+	,
+		duration: 500
+		complete: ->
+			if imgSize is 303
+				$(this).attr
+					src: $(this).parent().data().photos.low_resolution.url
+			else
+				$(this).attr
+					src: $(this).parent().data().photos.thumbnail.url
+
+	$('#smallView').masonry
+		columnWidth: imgSize
+
+
+loadPhotos = (jsonURL)->
+
+	if jsonURL == 'done'
+		return
+
+	if jsonURL is 'first'
+		jsonURL = '/images?page='+currentPage
+
 	$.ajax
-		type: "GET"
-		cache: "false"
-		datatype: "json"
-		url: "feed.json"
+		type: 'GET'
+		cache: 'false'
+		datatype: 'json'
+		url: jsonURL
 		success: (data) ->
-			i = 0
-			dataContainer = data
+			$('#smallView').fadeIn()
+			$(data).each (i, p) ->
+				createNewPhoto(i, p)
 
-			while i < data.length
-				createNewInstaPic(data[i].images.thumbnail.url,i,"smallView")
-				$currObj = $('#smallView').children().last()
-				$currObj.data('user':data[i].caption.from.full_name)
+				if data.length == 50
+					currentPage++
+					jsonURL = '/images?page='+currentPage
+				else
+					jsonURL = 'done'
 
-				#set date
-				printdate = setprintDate(data[i].caption.created_time)
-				$currObj.data('printdate':printdate)
-
-				#set caption
-				$currObj.data('captionText':data[i].caption.text)
-
-				#set lat and long values
-				if data[i].location
-					if data[i].location.latitude
-						$currObj.data('lat':data[i].location.latitude)
-						$currObj.data('long':data[i].location.longitude)
-				i++
-				console.log $currObj.data()
-
-		error: (data) ->
+		error: ->
 			alert "An error occured while connecting to the instagram API"
-		complete: (data) ->
-			# $('#smallView').masonry('reload')
-
-			fadeInFeed()
-
-unless "ontouchstart" of document.documentElement
-	$('body').addClass('backgroundActive')
-	#$('.ui-arrow').hide()
 
 
-#infinite scroll stuff
-$(window).on 'scroll', (e) ->
-	st = $(window).scrollTop()
-	bottom = $(document).height() - $(window).height()
-	if st is bottom
-		getFeed()
+createNewPhoto = (i, photo) ->
+	newPhoto = $('<div class="feedParent"></div>')
+	if $('#smallView').hasClass 'large'
+		newPhoto.append '<img src="'+photo.images.low_resolution.url+'" />'
+	else
+		newPhoto.append '<img src="'+photo.images.thumbnail.url+'" />'
 
+	newPhoto.data
+		'user': photo.caption.from.full_name
+		'printdate': setPrintDate(photo.caption.created_time)
+		'captionText': photo.caption.text
+		'photos': photo.images
+
+	if photo.location
+		if photo.location.latitude
+			newPhoto.data
+				'lat': photo.location.latitude
+				'long': photo.location.longitude
+
+	$('#smallView').append(newPhoto).masonry 'appended', newPhoto, true
+
+	newPhoto.on 'mouseenter', ->
+		$('#smallView').css 'overflow':'visible'
+
+	newPhoto.on 'click', smallPhotoClick
+
+
+smallPhotoClick = (e) ->
+	$(window).scrollTop(0)
+
+	index = $(this).index()
+	photo = $(this)
+	setImageInfo(photo)
+	$('#instagramFeed').fadeOut 100, ->
+		loadBigImage(index)
+	fadeInSingleView()
+	singleViewActive = true
+
+
+setImageInfo = ($obj) ->
+	captionTxt = $obj.data('captionText')
+	user = $obj.data('user').toProperCase()
+	printdate = $obj.data('printdate')
+	lat = $obj.data('lat') or ""
+	long = $obj.data('long') or ""
+	if long
+		initgooglemaps(lat, long)
+	else
+		$('#map_canvas').hide()
+	$('.caption .picdata .userdate').html "Taken by " + user + " on " + printdate
+	$('.caption .picdata .location').html ""
+	$('.captionText').html captionTxt
+
+
+loadBigImage = (index) ->
+	if index > $('.feedParent').length
+		return
+
+	currentPhotoIndex = index
+	photo = $('.feedParent').eq(index).data()
+	big_url = photo.photos.standard_resolution.url
+
+	img = $('<img id="singleImage" />').attr('src', big_url).load ->
+			if not @complete or typeof @naturalWidth is 'undefined' or @naturalWidth is 0
+				console.log 'Could not load image.'
+			else
+				if $('.bigImageContainer').children().size() == 2
+					$(".bigImageContainer").prepend img
+					touchEvents()
+					fadeInSingleView()
+
+
+loadSingleImage = (index) ->
+	$('#singleImage').fadeOut 200, ->
+		$('#singleImage').remove()
+		loadBigImage(index)
+		$newobj = $('.feedParent').eq(index)
+		setImageInfo($newobj)
+
+nextSinglePhoto = ->
+	totalPhotos = $('.feedParent').length
+	currentPhotoIndex++
+	if currentPhotoIndex == totalPhotos
+		currentPhotoIndex = 0
+	loadSingleImage(currentPhotoIndex)
+
+
+prevSinglePhoto = ->
+	totalPhotos = $('.feedParent').length
+	unless currentPhotoIndex == 0
+		currentPhotoIndex--
+	else
+		currentPhotoIndex = totalPhotos - 1
+	loadSingleImage(currentPhotoIndex)
+
+fadeInSingleView = ->
+	$('#singleImage, .bigImageView').fadeIn()
+	$('.ui-back_arrowContainer').show()
+	$('.ui-view_smallContainer, .ui-view_largeContainer').hide()
+
+infiniteScroll = (e) ->
+	unless singleViewActive
+		st = $(window).scrollTop()
+		bottom = $(document).height() - $(window).height()
+		if st is bottom
+			unless nextPageJSON is ''
+				loadPhotos(nextPageJSON)
+
+setPrintDate = (data) ->
+	date = new Date(data*1000)
+	d = date.getDate()
+	m = date.getMonth()
+	y = date.getFullYear()
+	month = monthArray[m]
+	dateJoin = [d,month,y]
+	printdate = dateJoin.join(" ")
 
 touchEvents = ->
 	originX = 0
@@ -97,220 +230,20 @@ touchEvents = ->
 		else if diff < -200
 			changeImage("arrowLeft")
 
-
-changeImage = (direction) ->
-	newFeednum = 0
-	currFeedNum = $('.bigImageContainer').data('currFeedNum')
-	containerLength = $('#smallView').children().size()
-	if direction == "arrowLeft"
-		if currFeedNum - 1 >= 0
-			newFeednum = currFeedNum - 1
-#				console.log newFeednum
-		else
-			newFeednum = containerLength - 1
-	else if direction == "arrowRight"
-		if currFeedNum + 1 < containerLength
-			newFeednum = currFeedNum + 1
-		else
-			newFeednum = 0
-
-		console.log newFeednum
-	$('#singleImage').fadeOut 200, ->
-		$('#singleImage').remove()
-		#load new image
-		loadBigImage(newFeednum)
-		$newobj = $('.feedParent:eq('+newFeednum+')')
-		#set the new image info
-		setImageInfo($newobj)
-
-#attach keyevents to singleview
-
-$('body').keyup (e) ->
+singlePhotoKeyEvent = (e) ->
 	if singleViewActive
-		console.log "keypress"
 		if e.keyCode is 37
-			changeImage("arrowLeft")
+			nextSinglePhoto()
 		else if e.keyCode is 39
-			changeImage("arrowRight")
-
-
-#set clickhandlers on navarrows in singleview
-$('.ui-arrow').click (e) ->
-	e.preventDefault()
-	changeImage($(this).attr('id'))
-
-#set closebutton click
-$('.ui-back_arrowContainer, .clickbg').click (e) ->
-	e.preventDefault()
-	closeBigImageView()
+			prevSinglePhoto()
 
 closeBigImageView = ->
-	currentView = $('body').attr "class"
-	currViewObj = $('#'+currentView)
-	newImg = $('.bigImageView')
-	newImg.fadeOut 200, ->
+	$('.bigImageView').fadeOut 200, ->
 		$('.ui-back_arrowContainer').hide()
-		$('.ui-view_smallContainer').show()
-		$('.ui-view_largeContainer').show()
-		# $('#map_canvas').empty()
+		$('.ui-view_smallContainer, .ui-view_largeContainer').show()
 		$("#singleImage").remove()
-		fadeInFeed()
-		currViewObj.masonry('reload')
-		currViewObj.css('overflow-x':'visible')
-		currViewObj.css('overflow-y':'visible')
-		# $('#map_canvas').remove()
+		$('#smallView, #instagramFeed, #filterSection').fadeIn()
 		singleViewActive = false
-
-
-setprintDate = (data) ->
-	#set date
-	date = new Date(data*1000)
-	d = date.getDate()
-	m = date.getMonth()
-	y = date.getFullYear()
-	month = monthArray[m]
-	dateJoin = [d,month,y]
-	printdate = dateJoin.join(" ")
-
-
-whatView = (viewType) ->
-	body = $('body')
-	#currentView = body.attr "class"
-	currentView = body.data('class')
-	console.log currentView
-	switch viewType
-		when "smallView"
-			unless body.hasClass(viewType)
-				$("#"+currentView).fadeOut(20)
-				changeView(viewType)
-		when "largeView"
-			unless body.hasClass(viewType)
-				$("#"+currentView).fadeOut(20)
-				changeView(viewType)
-		when "listView"
-			unless body.hasClass(viewType)
-				changeView(viewType)
-
-changeView = (viewtype) ->
-	#$('body').attr('class':viewtype)
-	console.log viewtype
-	$('body').data('class':viewtype)
-	$viewObj = $("#"+viewtype)
-	i = 0
-	if $viewObj.children().length  > 0
-		console.log "has children"
-		$viewObj.delay(30).fadeIn()
-		#$viewObj.masonry('reload')
-		#$viewObj.css('overflow-x':'visible')
-		#$viewObj.css('overflow-y':'visible')
-
-	else
-		while i < dataContainer.length
-			createNewInstaPic(dataContainer[i].images.low_resolution.url,i,viewtype)
-			$currObj = $viewObj.children().last()
-			$currObj.data('user':dataContainer[i].caption.from.full_name)
-
-			#set caption
-			$currObj.data('captionText':dataContainer[i].caption.text)
-
-			#set date
-			printdate = setprintDate(dataContainer[i].caption.created_time)
-			$currObj.data('printdate':printdate)
-
-			#set lat and long values
-			if dataContainer[i].location
-				if dataContainer[i].location.latitude
-					$currObj.data('lat':dataContainer[i].location.latitude)
-					$currObj.data('long':dataContainer[i].location.longitude)
-			i++
-			if viewtype is "largeView"
-				if i is dataContainer.length
-					$('#largeView').masonry
-						itemSelector: ".feedParent"
-						columnWidth: 303
-						isAnimated: true
-						isFitWidth: true
-						gutterWidth: 1
-
-					$('#largeView').masonry('reload')
-					$('#largeView').css('overflow-x':'visible')
-					$('#largeView').css('overflow-y':'visible')
-
-createNewInstaPic = (url,nr,viewtype) ->
-	$newElement =$("<div class=feedParent></>")
-	$newElement.append "<img src="+url+" />"
-	parent = $('#'+viewtype)
-	parent.append($newElement).masonry 'appended', $newElement, true
-	setDataElement = $('#instagramFeed').children(':last')
-
-	$newElement.click (e) ->
-		e.preventDefault()
-		$(window).scrollTop(0)
-		fadeOutFeed(nr)
-		setImageInfo($(this))
-		fadeInSingleView()
-		$('.bigImageView').fadeIn()
-		singleViewActive = true
-
-fadeInFeed = ->
-	delayVal = 0
-	$('#instagramFeed, #filterSection').show()
-
-	currentView = $('body').attr "class"
-	currViewObj = $('#'+currentView)
-
-	currViewObj.children().each ->
-		$(this).css('display','block')
-		$(this).delay(delayVal).animate({'opacity':1})
-		delayVal += 50
-
-
-fadeOutFeed = (num) ->
-	$('#instagramFeed').fadeOut 100, ->
-		loadBigImage(num)
-		$("#filterSection").fadeOut(50)
-
-
-loadBigImage = (num) ->
-
-	data = dataContainer[num]
-	big_url = dataContainer[num].images.standard_resolution.url
-
-	img = $('<img id="singleImage" />').attr('src', big_url).load( ->
-			if not @complete or typeof @naturalWidth is 'undefined' or @naturalWidth is 0
-				console.log 'Could not load image.'
-			else
-				if $('.bigImageContainer').children().size() == 2
-					$(".bigImageContainer").prepend img
-					$(".bigImageContainer").data("currFeedNum":num)
-					#activate swiping gestures
-					touchEvents()
-
-					fadeInSingleView()
-			)
-
-
-fadeInSingleView = ->
-	$('#singleImage').fadeIn()
-	$('.ui-back_arrowContainer').show()
-	$('.ui-view_smallContainer').hide()
-	$('.ui-view_largeContainer').hide()
-
-
-setImageInfo = ($obj) ->
-	captionTxt = $obj.data('captionText')
-	user = $obj.data('user').toProperCase()
-	printdate = $obj.data('printdate')
-	lat = $obj.data('lat') or ""
-	long = $obj.data('long') or ""
-	if long
-		initgooglemaps(lat, long)
-	else
-		$('#map_canvas').hide()
-	$('.caption .picdata .userdate').html "Taken by " + user + " on " + printdate
-	$('.caption .picdata .location').html ""
-	$('.captionText').html captionTxt
-
 
 initgooglemaps = (lat, long) ->
 
@@ -319,7 +252,7 @@ initgooglemaps = (lat, long) ->
 			latitude: 40.738334655
 			longitude: -73.989166259
 			id: "swordMarker"
-		 ]
+		]
 		icon: "images/map-marker.png"
 		addMarker: true
 
