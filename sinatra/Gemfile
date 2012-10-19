@@ -1,0 +1,10 @@
+source :rubygems
+
+gem "sinatra"
+gem "instagram"
+gem "net-ssh"
+gem "net-sftp"
+gem "mysql2"
+gem "datamapper"
+gem "dm-mysql-adapter"
+gem 'sinatra-paginate'
