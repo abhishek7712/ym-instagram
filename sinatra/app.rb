@@ -297,7 +297,7 @@ helpers do
 end
 
 get "/api" do
-	@images  = InstagramImage.all(limit: 50, offset: page * 50)
+	@images  = InstagramImage.all(limit: 50, offset: page * 50,:order => [ :created_time.desc ])
 	@out = Array.new
 	for image in @images
 		item = Hash.new
@@ -310,9 +310,9 @@ get "/api" do
 		item["caption"] = image.caption == '' ? {} : image.caption
 		item["location"] = image.location == '' ? {} : JSON.parse(image.location)
 		if image.comments == '' || image.comments == " "
-			item["comments"] = []
+			#item["comments"] = []
 		else
-			item["comments"] = JSON.parse('['+image.comments.strip!+']')
+			#item["comments"] = JSON.parse('['+ image.comments.strip!.gsub(/["]/,'\"') + ']')
 		end
 		#item["comments"] = (image.comments == '' || image.comments == " " ) ? {} : JSON.parse(image.comments)
 
