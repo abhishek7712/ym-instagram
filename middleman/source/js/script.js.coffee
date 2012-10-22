@@ -78,7 +78,10 @@ loadPhotos = (jsonURL)->
 	$.ajax
 		type: 'GET'
 		cache: 'false'
-		datatype: 'json'
+		contentType: 'application/json'
+		dataType: 'json'
+		processData: false
+		headers: {'X-Requested-With': 'XMLHttpRequest'}
 		url: jsonURL
 		success: (data) ->
 			$('#smallView').fadeIn()
