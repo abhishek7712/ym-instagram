@@ -5,6 +5,7 @@ require 'net/ssh'
 require 'net/sftp'
 require 'data_mapper'
 require 'cgi'
+require 'json'
 
 # Enable sinatra sessions (so we stay logged in)
 enable :sessions
@@ -246,7 +247,7 @@ get "/feed" do
 											:full_name => User.first(:instagram_id => media_item.user.id.to_i).full_name,
 											:instagram_id => media_item.id,
 											:location => media_item.location.nil? ? '' : media_item.location.to_json,
-											:comments => media_item.comments.data.to_json.gsub(/[^A-Za-z0-9 .,;:!?@#%$&*}{)('"]+/i, ' '),
+											:comments => media_item.comments.data.to_json.gsub(/[^A-Za-z0-9 .,;:!?@#%$&*}{)('"]+/i, ''),
 											:images => media_item.images.to_json)
 				end
 			rescue Exception => e
@@ -297,14 +298,34 @@ end
 
 get "/api" do
 	@images  = InstagramImage.all(limit: 50, offset: page * 50)
+	@out = Array.new
 	for image in @images
+		item = Hash.new
+		item["id"] = image.id
+		item["user_id"] = image.user_id
+		item["instagram_id"] = image.instagram_id
+		item["created_time"] = image.created_time
+
+		item["images"] = JSON.parse(image.images)
+		item["caption"] = image.caption == '' ? {} : image.caption
+		item["location"] = image.location == '' ? {} : JSON.parse(image.location)
+		if image.comments == '' || image.comments == " "
+			item["comments"] = []
+		else
+			item["comments"] = JSON.parse('['+image.comments.strip!+']')
+		end
+		#item["comments"] = (image.comments == '' || image.comments == " " ) ? {} : JSON.parse(image.comments)
+
 		fname = User.first(:id => image.user_id.to_i).full_name
+
 		if image.full_name != fname
 			image.full_name = fname
 			image.save!
 		end
+		item["full_name"] = fname
+		@out.push(item)
 	 end
-	return @images.to_json
+	return @out.to_json
 end
 
 get "/users" do

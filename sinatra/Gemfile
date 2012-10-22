@@ -8,3 +8,4 @@ gem "mysql2"
 gem "datamapper"
 gem "dm-mysql-adapter"
 gem 'sinatra-paginate'
+gem "json"

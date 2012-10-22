@@ -90,6 +90,7 @@ DEPENDENCIES
   datamapper
   dm-mysql-adapter
   instagram
+  json
   mysql2
   net-sftp
   net-ssh
